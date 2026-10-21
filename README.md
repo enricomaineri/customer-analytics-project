@@ -76,6 +76,38 @@ the top 20% of customers generate **77%** of net revenue, the top 1% generate 31
 
 ![RFM segments: size vs revenue](reports/figures/02_rfm_segments.png)
 
+## 3. Segmentation with clustering
+
+[`notebooks/03_segmentation.ipynb`](notebooks/03_segmentation.ipynb)
+
+K-means on the actual recency, frequency and monetary values, log-transformed (skewness of monetary
+drops from 26.8 to 0.1) and standardised so that days, invoices and pounds weigh equally.
+
+- **k = 4**: second-best silhouette after the trivial k = 2 (0.36 vs 0.34 for k = 3) and almost
+  identical clusters across random seeds (adjusted Rand index 0.99).
+- **Gaussian mixture rejected**: because frequency is an integer, the BIC rewards components squeezed
+  onto single values ("exactly 2 invoices") and keeps falling up to k = 9. With 4 components it agrees
+  only partly with k-means (ARI 0.40) and is uncertain about 29% of customers.
+
+| Cluster | % customers | Days since last purchase | Invoices | Net spend | % revenue | Recommended action |
+|---|---:|---:|---:|---:|---:|---|
+| Best customers | 20.8% | 17 | 13 | £4,711 | 74.1% | Protect: account management, early access, watch for slowdowns |
+| Fading regulars | 26.0% | 188 | 4 | £1,342 | 16.4% | Biggest opportunity: personalised win-back, trigger when the usual gap is exceeded |
+| Recent, low frequency | 20.0% | 24 | 3 | £725 | 5.9% | Nurture towards a habit: recommendations, bundles, pre-Christmas reminders |
+| Lost one-timers | 33.3% | 398 | 1 | £254 | 3.6% | Low priority: cheap automated reactivation only |
+
+*Medians per cluster.*
+
+![Median profile of each cluster](reports/figures/03_cluster_profiles.png)
+
+**Comparison with RFM segments:** the two methods largely agree (83% of Champions are Best customers,
+92% of Hibernating are Lost one-timers). The exception is the **Loyal** segment, which k-means splits
+into heavy buyers still active (median 36 days, 12 invoices) and moderate buyers whose last order is
+already three months old (89 days, 6 invoices): part of a segment that looks healthy in the RFM grid
+is already losing the habit.
+
+![RFM segments vs clusters](reports/figures/03_rfm_vs_clusters.png)
+
 ## Project structure
 
 ```
