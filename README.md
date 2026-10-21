@@ -151,6 +151,49 @@ someone who used to buy every couple of weeks, the predicted CLV is about £3.
 
 ![Holdout purchases: actual vs predicted](reports/figures/04_holdout_purchases.png)
 
+## 5. Churn prediction
+
+[`notebooks/05_churn.ipynb`](notebooks/05_churn.ipynb)
+
+**Question:** in early September, which customers will not buy during the Christmas season?
+Churn = no purchase in the 3 months after the cutoff (10 Sep – 9 Dec).
+
+| | Cutoff | Features from | Churn observed in | Customers | Churn rate |
+|---|---|---|---|---:|---:|
+| Train | 10 Sep 2010 | 9 months before | 10 Sep – 9 Dec 2010 | 3,241 | 41.2% |
+| Test | 10 Sep 2011 | 9 months before | 10 Sep – 9 Dec 2011 | 3,234 | 42.3% |
+
+**No leakage by design:**
+- temporal split in the same season, with training labels fully observed before the test cutoff;
+- the same 9-month feature window in both snapshots;
+- preprocessing inside a scikit-learn `Pipeline`, hyperparameters tuned with 5-fold CV on train only,
+  test set used once;
+- returns re-paired with purchases using only returns made before each cutoff (the phase 1 pairing used
+  the whole period and would have removed ~200–290 purchase lines per snapshot using future returns);
+- outputs of phases 2–4 (computed on all 24 months) not used as features.
+
+| Test snapshot | ROC-AUC | Average precision | Churn rate in riskiest 20% |
+|---|---:|---:|---:|
+| Random | 0.500 | 0.423 | 42.3% |
+| Recency only | 0.684 | 0.592 | 65.5% |
+| Frequency only | 0.723 | 0.585 | 59.4% |
+| BG/NBD expected purchases | 0.730 | 0.615 | 66.9% |
+| BG/NBD 1 − P(alive) | 0.351 | 0.401 | 36.2% |
+| Logistic regression | 0.747 | 0.638 | 67.8% |
+| **Gradient boosting (chosen on CV)** | **0.745** | **0.630** | **67.5%** |
+
+- The chosen model beats the best baseline by **+0.016 AUC** (bootstrap 95% CI +0.003 to +0.027): a real
+  but modest gain. Churn without a contract is hard to predict from purchase history alone.
+- **1 − P(alive) is worse than random**: BG/NBD considers every one-time buyer alive, but they churn
+  twice as often as repeat customers (59% vs 29%).
+- Most important features (permutation importance): number of distinct products, **overdue ratio**
+  (days since last purchase ÷ usual gap between purchases) and recency.
+- **Targeting:** contacting the 500 riskiest customers reaches 337 churners worth £119k in past
+  revenue; ranking by *revenue at risk* (risk × spend) reaches 173 churners worth £375k. The first suits
+  cheap automated campaigns, the second personal win-back actions.
+
+![Churn model vs baselines](reports/figures/05_churn_results.png)
+
 ## Project structure
 
 ```
