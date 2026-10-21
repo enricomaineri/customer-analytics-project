@@ -108,6 +108,49 @@ is already losing the habit.
 
 ![RFM segments vs clusters](reports/figures/03_rfm_vs_clusters.png)
 
+## 4. Customer Lifetime Value
+
+[`notebooks/04_clv.ipynb`](notebooks/04_clv.ipynb)
+
+12-month CLV = expected purchases (**BG/NBD**) × expected value per purchase (**Gamma-Gamma**),
+discounted at 1% per month. CLV is in revenue, as margins are not available.
+
+- One purchase = one customer-day; time in weeks; gross revenue (unpaired returns are 1% of revenue).
+- **Validation:** fitted on 18 months (Dec 2009 – Jun 2011), tested on the following 6 months, against a
+  naive baseline where each customer keeps their past repeat-purchase rate. A 12 + 12 months split was
+  rejected: with one year of history the dropout parameters are not identifiable (`b` hits the
+  optimiser bound and purchases are overestimated by 54%).
+
+| Holdout (6 months) | Actual | BG/NBD | Naive baseline |
+|---|---:|---:|---:|
+| Repeat purchases, all customers | 7,720 | 7,606 (−1.5%) | 8,084 (+4.7%) |
+| Customers silent for more than 6 months | 763 | 810 | 1,091 |
+| One-time buyers | 725 | 812 | 0 |
+| MAE per customer | – | 1.04 | 1.09 |
+| Revenue (BG/NBD × Gamma-Gamma) | £4.28M | £3.61M (−16%) | £6.18M (+44%) |
+
+Per customer, BG/NBD is only slightly better than the baseline; its advantage is on customers who have
+gone silent and on one-time buyers, and in the total. Revenue is underestimated because of
+**seasonality**: purchases in September–October are 24% larger on average, and the models assume a
+constant rate and value.
+
+Other checks: Gamma-Gamma's independence assumption holds (correlation between frequency and value 0.13);
+BG/NBD treats every one-time buyer as alive, so P(alive) is not used for them (MBG/NBD gives the same
+accuracy).
+
+| Cluster | % customers | Median CLV | % of predicted CLV |
+|---|---:|---:|---:|
+| Best customers | 20.8% | £2,291 | 67.6% |
+| Recent, low frequency | 20.0% | £822 | 14.1% |
+| Fading regulars | 26.0% | £525 | 12.3% |
+| Lost one-timers | 33.3% | £191 | 6.1% |
+
+The top 20% of customers by CLV account for 71% of predicted value. CLV also exposes "false friends":
+customer 17850 is in the Best customers cluster thanks to past spend, but after a year of silence, for
+someone who used to buy every couple of weeks, the predicted CLV is about £3.
+
+![Holdout purchases: actual vs predicted](reports/figures/04_holdout_purchases.png)
+
 ## Project structure
 
 ```
