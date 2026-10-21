@@ -2,9 +2,32 @@
 
 End-to-end customer analytics on two years of transactions from a UK-based online
 gift retailer: data cleaning, RFM analysis, customer segmentation, Customer Lifetime
-Value (BG/NBD + Gamma-Gamma) and churn prediction.
+Value (BG/NBD + Gamma-Gamma) and churn prediction. Every step is motivated in the
+notebooks, compared with a simple baseline where it makes sense, and validated
+without using information from the future.
 
-> Work in progress.
+**Stack:** Python, pandas, scikit-learn, lifetimes, matplotlib, Jupyter.
+
+## Key results
+
+| Question | Answer |
+|---|---|
+| How concentrated is revenue? | The top 20% of customers generate **77%** of net revenue; Champions and Loyal (32% of customers) generate 79% |
+| What segments are there? | K-means finds 4 groups: Best customers (21% of customers, 74% of revenue), Fading regulars, Recent low-frequency buyers, Lost one-timers. It also shows that **43% of the RFM "Loyal" customers are already fading** |
+| How much will customers be worth? | BG/NBD predicts the purchases of a 6-month holdout **within 1.5%** (naive baseline +4.7%). Revenue is underestimated by 16% because pre-Christmas orders are larger and the models have no seasonality |
+| Who will not come back for Christmas? | On a temporal test set, gradient boosting reaches **ROC-AUC 0.745** vs 0.730 for the best baseline (BG/NBD); a modest but significant gain (bootstrap 95% CI +0.003 to +0.027) |
+| Where should the budget go? | Targeting the 500 customers with the highest *revenue at risk* instead of the highest churn risk reaches churners worth **3× more** in past revenue |
+
+Some findings along the way that shaped the analysis:
+
+- The two Excel sheets overlap on 9 days (22,523 identical rows), and only 34% of returns can be paired
+  with the purchase they cancel, but those pairs carry 77% of the returned value.
+- A Gaussian mixture is unusable on this data: the integer frequency makes the BIC reward components
+  squeezed onto single values.
+- BG/NBD's probability of being alive is **worse than random** as a churn score, because the model
+  assumes every one-time buyer is still active.
+- Pairing returns with purchases on the whole period leaks future information into churn features;
+  the churn pipeline redoes the pairing at each cutoff.
 
 ## Data
 
@@ -194,23 +217,94 @@ Churn = no purchase in the 3 months after the cutoff (10 Sep – 9 Dec).
 
 ![Churn model vs baselines](reports/figures/05_churn_results.png)
 
+## 6. Dashboard
+
+[`app/streamlit_app.py`](app/streamlit_app.py) · a Streamlit app for a marketing team, with three tabs:
+
+- **Overview:** key figures and size vs revenue of every RFM segment or k-means cluster, with the
+  recommended action for each.
+- **Customer lookup:** profile, segment, cluster, 12-month CLV and probability of being active for any
+  customer, plus their churn risk at 10 Sep 2011 and what actually happened. One-time buyers get a warning,
+  since the CLV models know little about them.
+- **Campaign simulator:** choose how many customers to contact before Christmas 2011 and how to rank them
+  (churn risk, revenue at risk, past spend, random), and see how many churners each rule would have reached
+  and how much they were worth.
+
+The app reads a single customer table, `app/data/customers.parquet` (about 340 KB), built by
+`app/prepare_data.py` from the notebook outputs and versioned so the dashboard runs without the raw data.
+
+![Dashboard: campaign simulator](reports/figures/06_dashboard_campaign.png)
+
+## Limitations
+
+- **Registered customers only.** Lines without a customer ID (15% of revenue) cannot be attributed and
+  are excluded from every customer-level result.
+- **Revenue, not profit.** Margins are not in the data, so CLV and "revenue at risk" are in revenue terms.
+- **No seasonality in the CLV models.** BG/NBD and Gamma-Gamma assume a constant buying rate and value;
+  they rank customers well and get yearly totals roughly right, but they are not monthly forecasts.
+- **One-time buyers.** BG/NBD treats them as alive, and their CLV is essentially a population average.
+- **Short history.** Two years of data allow only one training and one test snapshot for churn; the test
+  result comes from a single season.
+- **Purchase history only.** Churn signal is limited without behavioural data such as website visits,
+  email engagement or customer service contacts.
+
+## What I would do next
+
+- Add seasonality to the CLV (e.g. a seasonal adjustment of the purchase rate, or a model such as
+  Pareto/GGG or a hierarchical Bayesian model with covariates).
+- Collect more cutoffs as more data arrives, to train the churn model on several seasons and test it on
+  more than one.
+- Measure the effect of the recommended campaigns with an A/B test, which is the only way to know whether
+  targeting by risk or by revenue at risk actually retains more value.
+
 ## Project structure
 
 ```
-├── app/              # Streamlit dashboard (optional)
+├── app/
+│   ├── streamlit_app.py        # dashboard
+│   ├── prepare_data.py         # builds the dashboard's customer table
+│   ├── data/customers.parquet  # one row per customer (versioned)
+│   └── requirements.txt        # minimal dependencies for deployment
 ├── data/
-│   ├── raw/          # original UCI file (not versioned)
-│   └── processed/    # outputs of each notebook (not versioned)
-├── notebooks/        # one notebook per phase, run in order
-├── reports/figures/  # charts used in this README
-├── src/              # helper functions shared across notebooks
+│   ├── raw/                    # original UCI file (not versioned)
+│   └── processed/              # outputs of each notebook (not versioned)
+├── notebooks/
+│   ├── 01_data_cleaning.ipynb
+│   ├── 02_rfm_analysis.ipynb
+│   ├── 03_segmentation.ipynb
+│   ├── 04_clv.ipynb
+│   └── 05_churn.ipynb
+├── reports/figures/            # charts used in this README
+├── src/
+│   ├── cleaning.py             # loading and cleaning steps
+│   ├── rfm.py                  # RFM table and segments at any snapshot date
+│   ├── segmentation.py         # features, k-means and evaluation helpers
+│   ├── clv.py                  # BG/NBD and Gamma-Gamma inputs and fitting
+│   └── churn.py                # churn dataset built at a cutoff, leakage-free
 └── requirements.txt
 ```
 
-## Setup
+## How to run
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate        # on macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Place `online_retail_II.xlsx` in `data/raw/`, then run the notebooks in order (each one reads the
+outputs of the previous ones from `data/processed/`). From the `notebooks/` folder:
+
+```bash
+jupyter nbconvert --to notebook --execute --inplace 01_data_cleaning.ipynb 02_rfm_analysis.ipynb 03_segmentation.ipynb 04_clv.ipynb 05_churn.ipynb
+```
+
+Random seeds are fixed: re-running all five notebooks from scratch reproduces every output table exactly.
+The full run takes a few minutes, most of it reading the Excel file and tuning the churn models.
+
+To launch the dashboard from the project root (the customer table is already in the repository; rebuild it
+with `python app/prepare_data.py` after re-running the notebooks):
+
+```bash
+streamlit run app/streamlit_app.py
 ```
