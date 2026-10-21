@@ -6,7 +6,9 @@ Value (BG/NBD + Gamma-Gamma) and churn prediction. Every step is motivated in th
 notebooks, compared with a simple baseline where it makes sense, and validated
 without using information from the future.
 
-**Stack:** Python, pandas, scikit-learn, lifetimes, matplotlib, Jupyter.
+**Live dashboard:** [enrico-customer-analytics.streamlit.app](https://enrico-customer-analytics.streamlit.app/)
+
+**Stack:** Python, pandas, scikit-learn, lifetimes, matplotlib, Jupyter, Streamlit.
 
 ## Key results
 
@@ -219,6 +221,7 @@ Churn = no purchase in the 3 months after the cutoff (10 Sep – 9 Dec).
 
 ## 6. Dashboard
 
+**[Open the live dashboard](https://enrico-customer-analytics.streamlit.app/)** ·
 [`app/streamlit_app.py`](app/streamlit_app.py) · a Streamlit app for a marketing team, with three tabs:
 
 - **Overview:** key figures and size vs revenue of every RFM segment or k-means cluster, with the
