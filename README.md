@@ -45,6 +45,37 @@ Result: 5,839 customers with 36,337 purchase invoices between Dec 2009 and Dec 2
 
 ![Monthly revenue and active customers](reports/figures/01_monthly_activity.png)
 
+## 2. RFM analysis
+
+[`notebooks/02_rfm_analysis.ipynb`](notebooks/02_rfm_analysis.ipynb)
+
+Each customer is described by **Recency** (days since last purchase), **Frequency** (number of
+invoices) and **Monetary** (net spend), measured at 2011-12-10. Revenue is highly concentrated:
+the top 20% of customers generate **77%** of net revenue, the top 1% generate 31%.
+
+- Recency and monetary are scored 1–5 by quintiles.
+- Frequency uses fixed thresholds (1 / 2 / 3–4 / 5–9 / 10+ invoices): 27.6% of customers have a
+  single invoice, so quintiles either collapse or give identical customers different scores.
+- Segments come from the standard recency × frequency grid. Monetary is left out of the grid
+  because it is strongly correlated with frequency (Spearman 0.86) and is used to describe segment value.
+- The RFM function takes the snapshot date as a parameter, so the churn model can recompute it at
+  a past cutoff without leakage.
+
+| Segment | Customers | % customers | % net revenue | Recommended action |
+|---|---:|---:|---:|---|
+| Champions | 822 | 14.1% | 52.4% | Reward: early access, loyalty perks, no discounts needed |
+| Loyal | 1,027 | 17.6% | 26.8% | Upsell and cross-sell, ask for referrals |
+| Potential loyalists | 715 | 12.2% | 4.2% | Build the habit: volume offers, pre-Christmas reminders |
+| New customers | 77 | 1.3% | 0.2% | Onboarding and a reason to place a second order |
+| Promising | 161 | 2.8% | 0.3% | Personalised recommendations |
+| Need attention | 281 | 4.8% | 2.0% | Time-limited offer based on past purchases |
+| About to sleep | 421 | 7.2% | 1.6% | Reactivation email before they lapse |
+| Can't lose | 57 | 1.0% | 2.7% | Top-priority win-back with personal contact |
+| At risk | 646 | 11.1% | 5.4% | Win-back campaign with a real incentive |
+| Hibernating | 1,632 | 27.9% | 4.3% | Low-cost automated campaigns only |
+
+![RFM segments: size vs revenue](reports/figures/02_rfm_segments.png)
+
 ## Project structure
 
 ```
